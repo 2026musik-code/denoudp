@@ -1,0 +1,13 @@
+{
+  "tasks": {
+    "start": "deno run --allow-net --allow-env --allow-sys --allow-read src/main.ts",
+    "dev": "deno run --watch --allow-net --allow-env --allow-sys --allow-read src/main.ts"
+  },
+  "imports": {
+    "hono": "jsr:@hono/hono@^4.0.0"
+  },
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "hono/jsx"
+  }
+}

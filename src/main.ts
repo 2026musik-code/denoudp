@@ -61,6 +61,16 @@ startUdpServer();
 
 // --- API Endpoints ---
 
+// Helper for domain detection
+function getDomain(c: any): string {
+    const forwardedHost = c.req.header('x-forwarded-host');
+    const host = c.req.header('host');
+    // Log headers for debugging
+    // addLog(`Headers - Host: ${host}, X-Forwarded-Host: ${forwardedHost}`);
+    const hostHeader = forwardedHost || host;
+    return hostHeader ? hostHeader.split(':')[0] : SERVER_DOMAIN;
+}
+
 // 1. Config Generator
 app.get('/api/config', (c) => {
   const username = c.req.query('username');
@@ -69,15 +79,12 @@ app.get('/api/config', (c) => {
     user = Store.getUsers().find(u => u.username === username);
   }
 
-  addLog(`API Request: /api/config generated${user ? ` for ${user.username}` : ''}`);
+  // Determine Host dynamically
+  const dynamicDomain = getDomain(c);
 
-  // Determine Host dynamically from Header or Fallback
-  const hostHeader = c.req.header('host');
-  const dynamicDomain = hostHeader ? hostHeader.split(':')[0] : SERVER_DOMAIN;
+  addLog(`API Config Req: Client IP ${c.req.header('x-forwarded-for') || 'Direct'} | Detected Domain: ${dynamicDomain}`);
 
   // ZIVPN / V2Ray / UDP Custom compatible config structure
-  // This is a representative format.
-
   // If user exists, use their credentials
   const password = user ? user.password : crypto.randomUUID();
   const uuid = user ? user.id : crypto.randomUUID();
@@ -100,27 +107,19 @@ app.get('/api/config', (c) => {
     allow_insecure: true
   };
 
-  // ZIVPN often uses a custom string format or base64.
-  // We will return JSON for easy parsing, but also a copy-paste friendly string in the dashboard.
   return c.json(config);
 });
 
 // 2. System Stats
 app.get('/api/stats', (c) => {
-  // Mocking stats for Deno Deploy (which restricts system access)
-  // or using real stats if available.
-
   let cpuUsage = 0;
   let ramUsage = 0;
 
   try {
-     // Deno.systemMemoryInfo() is unstable/restricted in some envs.
-     // We'll simulate variation for the "Live" feel if real data fails or is static.
      const mem = Deno.systemMemoryInfo();
      ramUsage = Math.round(((mem.total - mem.free) / mem.total) * 100);
-     cpuUsage = Math.floor(Math.random() * 20) + 10; // Simulated CPU load
+     cpuUsage = Math.floor(Math.random() * 20) + 10;
   } catch (e) {
-     // Fallback simulation
      cpuUsage = Math.floor(Math.random() * 40) + 20;
      ramUsage = Math.floor(Math.random() * 30) + 40;
   }
@@ -158,10 +157,10 @@ app.delete('/api/users/:id', async (c) => {
   return c.json({ success: true });
 });
 
-// --- Frontend (will be implemented in next step, but placeholder here) ---
+// --- Frontend ---
 app.get('/', (c) => {
-  const hostHeader = c.req.header('host');
-  const dynamicDomain = hostHeader ? hostHeader.split(':')[0] : SERVER_DOMAIN;
+  const dynamicDomain = getDomain(c);
+  // addLog(`Dashboard Load: Detected Domain ${dynamicDomain}`);
   return c.html(DashboardHTML(dynamicDomain, UDP_PORT));
 });
 

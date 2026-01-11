@@ -71,6 +71,10 @@ app.get('/api/config', (c) => {
 
   addLog(`API Request: /api/config generated${user ? ` for ${user.username}` : ''}`);
 
+  // Determine Host dynamically from Header or Fallback
+  const hostHeader = c.req.header('host');
+  const dynamicDomain = hostHeader ? hostHeader.split(':')[0] : SERVER_DOMAIN;
+
   // ZIVPN / V2Ray / UDP Custom compatible config structure
   // This is a representative format.
 
@@ -81,7 +85,7 @@ app.get('/api/config', (c) => {
   const config = {
     version: "2",
     remarks: `ZIVPN-${user ? user.username : 'Premium'}`,
-    server: SERVER_DOMAIN,
+    server: dynamicDomain,
     port: UDP_PORT,
     uuid: uuid,
     password: password, // Explicit field for UDP Custom
@@ -89,7 +93,7 @@ app.get('/api/config', (c) => {
     cipher: "auto",
     network: "udp", // Critical for UDP Custom
     type: "none",
-    host: SERVER_DOMAIN,
+    host: dynamicDomain,
     path: "/",
     tls: "none",
     udp_forward: true, // Custom flag often used
@@ -156,7 +160,9 @@ app.delete('/api/users/:id', async (c) => {
 
 // --- Frontend (will be implemented in next step, but placeholder here) ---
 app.get('/', (c) => {
-  return c.html(DashboardHTML(SERVER_DOMAIN, UDP_PORT));
+  const hostHeader = c.req.header('host');
+  const dynamicDomain = hostHeader ? hostHeader.split(':')[0] : SERVER_DOMAIN;
+  return c.html(DashboardHTML(dynamicDomain, UDP_PORT));
 });
 
 addLog(`HTTP Server initializing on port ${PORT}...`);

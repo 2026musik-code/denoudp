@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1",
+    "username": "default",
+    "password": "zi",
+    "traffic": 52428800
+  },
+  {
+    "id": "11fea00c-8bc9-42ea-a55f-ba51005c3f18",
+    "username": "curl_user",
+    "password": "786c0f71",
+    "traffic": 0
+  },
+  {
+    "id": "10ab70f7-5a14-4cbe-b872-3c55735d35b3",
+    "username": "testuser_playwright",
+    "password": "016f0123",
+    "traffic": 0
+  }
+]

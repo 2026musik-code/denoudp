@@ -176,6 +176,38 @@ export const DashboardHTML = (domain: string, port: number) => html`
             </div>
         </div>
 
+        <!-- User Management Section -->
+        <div class="glass-panel rounded-2xl p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-white flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2 text-pink-400" viewBox="0 0 20 20" fill="currentColor">
+                         <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
+                    </svg>
+                    User Management
+                </h3>
+                <div class="flex gap-2">
+                     <input type="text" id="new-username" placeholder="Username" class="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-indigo-500">
+                     <button onclick="createUser()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-2 px-4 rounded-lg shadow transition-colors">Add User</button>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-400">
+                    <thead class="bg-slate-900/50 text-xs uppercase font-medium text-slate-300">
+                        <tr>
+                            <th class="px-4 py-3 rounded-l-lg">Username</th>
+                            <th class="px-4 py-3">Password</th>
+                            <th class="px-4 py-3">Traffic Usage</th>
+                            <th class="px-4 py-3 rounded-r-lg text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user-table-body" class="divide-y divide-slate-800">
+                         <!-- User rows will be inserted here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         <!-- Main Content Grid -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
 
@@ -300,11 +332,84 @@ export const DashboardHTML = (domain: string, port: number) => html`
             } catch(e) { console.error("Log error", e); }
         }
 
+        // 5. User Management Functions
+        function formatBytes(bytes, decimals) {
+            if (decimals === undefined) decimals = 2;
+            if (!+bytes) return '0 Bytes';
+            const k = 1024;
+            const dm = decimals < 0 ? 0 : decimals;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+        }
+
+        async function updateUsers() {
+            try {
+                const res = await fetch('/api/users');
+                const users = await res.json();
+                const tbody = document.getElementById('user-table-body');
+                tbody.innerHTML = '';
+
+                users.forEach(user => {
+                    const tr = document.createElement('tr');
+                    tr.className = "hover:bg-slate-800/50 transition-colors";
+                    tr.innerHTML = [
+                        '<td class="px-4 py-3 font-medium text-white">' + user.username + '</td>',
+                        '<td class="px-4 py-3 font-mono text-xs text-indigo-300">' + user.password + '</td>',
+                        '<td class="px-4 py-3">',
+                        '    <div class="flex items-center">',
+                        '        <div class="w-full bg-slate-700 h-1.5 rounded-full mr-2 max-w-[50px]">',
+                        '            <div class="bg-green-500 h-1.5 rounded-full" style="width: ' + Math.min(100, (user.traffic / (1024*1024*100))*100) + '%"></div>',
+                        '        </div>',
+                        '        <span class="text-xs">' + formatBytes(user.traffic) + '</span>',
+                        '    </div>',
+                        '</td>',
+                        '<td class="px-4 py-3 text-right">',
+                        '    <button onclick="deleteUser(\'' + user.id + '\')" class="text-red-400 hover:text-red-300 transition-colors">',
+                        '        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">',
+                        '            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />',
+                        '        </svg>',
+                        '    </button>',
+                        '</td>'
+                    ].join('');
+                    tbody.appendChild(tr);
+                });
+            } catch(e) { console.error("User fetch error", e); }
+        }
+
+        async function createUser() {
+            const input = document.getElementById('new-username');
+            const username = input.value.trim();
+            if(!username) return;
+
+            try {
+                const res = await fetch('/api/users', {
+                    method: 'POST',
+                    body: JSON.stringify({ username })
+                });
+                if(res.ok) {
+                    input.value = '';
+                    updateUsers();
+                }
+            } catch(e) { console.error("Create user error", e); }
+        }
+
+        async function deleteUser(id) {
+            if(!confirm("Are you sure?")) return;
+            try {
+                await fetch('/api/users/' + id, { method: 'DELETE' });
+                updateUsers();
+            } catch(e) { console.error("Delete user error", e); }
+        }
+
         // Init
         fetchConfig();
-        setInterval(updateStats, 2000);
-        setInterval(updateLogs, 2000); // Poll logs every 2s
         updateStats();
+        updateUsers();
+
+        setInterval(updateStats, 2000);
+        setInterval(updateLogs, 2000);
+        setInterval(updateUsers, 3000); // Poll users every 3s
     </script>
 </body>
 </html>

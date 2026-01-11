@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { serveStatic } from 'hono/deno';
 import { upgradeWebSocket } from 'hono/deno';
 import { DashboardHTML } from './view.tsx';
+import { Store } from './store.ts';
 
 const app = new Hono();
 
@@ -42,6 +43,9 @@ async function startUdpServer() {
       if (Math.random() > 0.9) {
         addLog(`UDP Packet Rx from ${remoteAddr} | Size: ${data.length} bytes`);
       }
+
+      // Simulate Traffic Increment for Users
+      Store.simulateTraffic();
 
       // Simple Echo/Forward simulation (sending back to sender for testing)
       // await listener.send(data, addr);
@@ -118,6 +122,25 @@ app.get('/api/logs', (c) => {
   return c.json({ logs: logBuffer });
 });
 
+// 4. User Management
+app.get('/api/users', (c) => {
+  return c.json(Store.getUsers());
+});
+
+app.post('/api/users', async (c) => {
+  const body = await c.req.json();
+  if (!body.username) return c.json({ error: "Username required" }, 400);
+  const user = await Store.addUser(body.username);
+  addLog(`User created: ${user.username}`);
+  return c.json(user);
+});
+
+app.delete('/api/users/:id', async (c) => {
+  const id = c.req.param('id');
+  await Store.deleteUser(id);
+  addLog(`User deleted: ID ${id}`);
+  return c.json({ success: true });
+});
 
 // --- Frontend (will be implemented in next step, but placeholder here) ---
 app.get('/', (c) => {

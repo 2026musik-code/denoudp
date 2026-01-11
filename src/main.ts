@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { serveStatic } from 'hono/deno';
 import { upgradeWebSocket } from 'hono/deno';
 import { DashboardHTML } from './view.tsx';
+import { Store } from './store.ts';
 
 const app = new Hono();
 
@@ -43,6 +44,9 @@ async function startUdpServer() {
         addLog(`UDP Packet Rx from ${remoteAddr} | Size: ${data.length} bytes`);
       }
 
+      // Simulate Traffic Increment for Users
+      Store.simulateTraffic();
+
       // Simple Echo/Forward simulation (sending back to sender for testing)
       // await listener.send(data, addr);
     }
@@ -59,16 +63,28 @@ startUdpServer();
 
 // 1. Config Generator
 app.get('/api/config', (c) => {
-  addLog("API Request: /api/config generated");
+  const username = c.req.query('username');
+  let user = null;
+  if (username) {
+    user = Store.getUsers().find(u => u.username === username);
+  }
+
+  addLog(`API Request: /api/config generated${user ? ` for ${user.username}` : ''}`);
 
   // ZIVPN / V2Ray / UDP Custom compatible config structure
   // This is a representative format.
+
+  // If user exists, use their credentials
+  const password = user ? user.password : crypto.randomUUID();
+  const uuid = user ? user.id : crypto.randomUUID();
+
   const config = {
     version: "2",
-    remarks: `ZIVPN-Premium-${SERVER_DOMAIN}`,
+    remarks: `ZIVPN-${user ? user.username : 'Premium'}`,
     server: SERVER_DOMAIN,
     port: UDP_PORT,
-    uuid: crypto.randomUUID(),
+    uuid: uuid,
+    password: password, // Explicit field for UDP Custom
     alterId: 0,
     cipher: "auto",
     network: "udp", // Critical for UDP Custom
@@ -118,6 +134,25 @@ app.get('/api/logs', (c) => {
   return c.json({ logs: logBuffer });
 });
 
+// 4. User Management
+app.get('/api/users', (c) => {
+  return c.json(Store.getUsers());
+});
+
+app.post('/api/users', async (c) => {
+  const body = await c.req.json();
+  if (!body.username) return c.json({ error: "Username required" }, 400);
+  const user = await Store.addUser(body.username);
+  addLog(`User created: ${user.username}`);
+  return c.json(user);
+});
+
+app.delete('/api/users/:id', async (c) => {
+  const id = c.req.param('id');
+  await Store.deleteUser(id);
+  addLog(`User deleted: ID ${id}`);
+  return c.json({ success: true });
+});
 
 // --- Frontend (will be implemented in next step, but placeholder here) ---
 app.get('/', (c) => {

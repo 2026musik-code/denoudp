@@ -16,5 +16,29 @@
     "username": "testuser_playwright",
     "password": "016f0123",
     "traffic": 0
+  },
+  {
+    "id": "d5219768-9572-475b-a312-88f8b99d00a9",
+    "username": "testuser",
+    "password": "bcc43893",
+    "traffic": 0
+  },
+  {
+    "id": "a1f0f59c-546e-47c7-86f2-365c5fa44c7a",
+    "username": "final_verify",
+    "password": "bfb712a0",
+    "traffic": 0
+  },
+  {
+    "id": "07947450-6d52-4c86-98ed-bc772cb8392d",
+    "username": "curl_manual",
+    "password": "0ad43d68",
+    "traffic": 0
+  },
+  {
+    "id": "48487236-e9e2-46f5-a94d-06d4a455da8e",
+    "username": "curl_check",
+    "password": "1148ece7",
+    "traffic": 0
   }
 ]

@@ -20,6 +20,12 @@ export const DashboardHTML = (domain: string, port: number) => html`
     <script src="https://unpkg.com/@lottiefiles/lottie-player@latest/dist/lottie-player.js"></script>
 
     <script>
+        // Server Info injected from backend
+        const SERVER_INFO = {
+            domain: "${domain}",
+            port: ${port}
+        };
+
         tailwind.config = {
             darkMode: 'class',
             theme: {
@@ -197,6 +203,7 @@ export const DashboardHTML = (domain: string, port: number) => html`
                         <tr>
                             <th class="px-4 py-3 rounded-l-lg">Username</th>
                             <th class="px-4 py-3">Password</th>
+                            <th class="px-4 py-3">Connection (IP:Port)</th>
                             <th class="px-4 py-3">Traffic Usage</th>
                             <th class="px-4 py-3 rounded-r-lg text-right">Action</th>
                         </tr>
@@ -353,9 +360,13 @@ export const DashboardHTML = (domain: string, port: number) => html`
                 users.forEach(user => {
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-slate-800/50 transition-colors";
+                    // Display IP:Port prominently
+                    const connectionInfo = SERVER_INFO.domain + ':' + SERVER_INFO.port;
+
                     tr.innerHTML = [
                         '<td class="px-4 py-3 font-medium text-white">' + user.username + '</td>',
-                        '<td class="px-4 py-3 font-mono text-xs text-indigo-300">' + user.password + '</td>',
+                        '<td class="px-4 py-3 font-mono text-xl font-bold text-yellow-400">' + user.password + '</td>',
+                        '<td class="px-4 py-3 font-mono text-sm text-indigo-300 select-all">' + connectionInfo + '</td>',
                         '<td class="px-4 py-3">',
                         '    <div class="flex items-center">',
                         '        <div class="w-full bg-slate-700 h-1.5 rounded-full mr-2 max-w-[50px]">',
@@ -364,8 +375,13 @@ export const DashboardHTML = (domain: string, port: number) => html`
                         '        <span class="text-xs">' + formatBytes(user.traffic) + '</span>',
                         '    </div>',
                         '</td>',
-                        '<td class="px-4 py-3 text-right">',
-                        '    <button onclick="deleteUser(\'' + user.id + '\')" class="text-red-400 hover:text-red-300 transition-colors">',
+                        '<td class="px-4 py-3 text-right flex gap-2 justify-end">',
+                         '    <button onclick="copyUserConfig(\'' + user.username + '\')" class="text-blue-400 hover:text-blue-300 transition-colors" title="Copy Config">',
+                        '        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">',
+                         '           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />',
+                        '        </svg>',
+                        '    </button>',
+                        '    <button onclick="deleteUser(\'' + user.id + '\')" class="text-red-400 hover:text-red-300 transition-colors" title="Delete">',
                         '        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">',
                         '            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />',
                         '        </svg>',
@@ -375,6 +391,17 @@ export const DashboardHTML = (domain: string, port: number) => html`
                     tbody.appendChild(tr);
                 });
             } catch(e) { console.error("User fetch error", e); }
+        }
+
+        async function copyUserConfig(username) {
+            try {
+                const res = await fetch('/api/config?username=' + username);
+                const data = await res.json();
+                const text = JSON.stringify(data, null, 2);
+                 navigator.clipboard.writeText(text).then(() => {
+                    alert("Config for " + username + " copied to clipboard!");
+                });
+            } catch (e) { console.error(e); }
         }
 
         async function createUser() {

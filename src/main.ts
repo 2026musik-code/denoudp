@@ -63,16 +63,28 @@ startUdpServer();
 
 // 1. Config Generator
 app.get('/api/config', (c) => {
-  addLog("API Request: /api/config generated");
+  const username = c.req.query('username');
+  let user = null;
+  if (username) {
+    user = Store.getUsers().find(u => u.username === username);
+  }
+
+  addLog(`API Request: /api/config generated${user ? ` for ${user.username}` : ''}`);
 
   // ZIVPN / V2Ray / UDP Custom compatible config structure
   // This is a representative format.
+
+  // If user exists, use their credentials
+  const password = user ? user.password : crypto.randomUUID();
+  const uuid = user ? user.id : crypto.randomUUID();
+
   const config = {
     version: "2",
-    remarks: `ZIVPN-Premium-${SERVER_DOMAIN}`,
+    remarks: `ZIVPN-${user ? user.username : 'Premium'}`,
     server: SERVER_DOMAIN,
     port: UDP_PORT,
-    uuid: crypto.randomUUID(),
+    uuid: uuid,
+    password: password, // Explicit field for UDP Custom
     alterId: 0,
     cipher: "auto",
     network: "udp", // Critical for UDP Custom

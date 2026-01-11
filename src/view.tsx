@@ -3,8 +3,6 @@ import { Hono } from 'hono';
 import { html } from 'hono/html';
 
 // We'll export a function that returns the full HTML string
-// This allows us to keep main.ts clean.
-
 export const DashboardHTML = (domain: string, port: number) => html`
 <!DOCTYPE html>
 <html lang="en" class="dark">
@@ -21,10 +19,8 @@ export const DashboardHTML = (domain: string, port: number) => html`
 
     <script>
         // Server Info injected from backend
-        const SERVER_INFO = {
-            domain: "${domain}",
-            port: ${port}
-        };
+        const INJECTED_DOMAIN = "${domain}";
+        const SERVER_PORT = ${port};
 
         tailwind.config = {
             darkMode: 'class',
@@ -126,7 +122,7 @@ export const DashboardHTML = (domain: string, port: number) => html`
                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 18z" clip-rule="evenodd" />
                      </svg>
-                     <span class="text-sm font-mono text-indigo-300">IP: ${domain}</span>
+                     <span class="text-sm font-mono text-indigo-300" id="header-ip">IP: Detecting...</span>
                 </div>
 
                 <div class="flex items-center space-x-2 bg-slate-800/50 rounded-full px-4 py-1 border border-slate-700">
@@ -282,6 +278,17 @@ export const DashboardHTML = (domain: string, port: number) => html`
 
     <!-- Logic Script -->
     <script>
+        // Helper: Get best domain (Client-side Override)
+        function getClientDomain() {
+            // Priority: Window Location > Injected Domain
+            if (window.location.hostname && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                return window.location.hostname;
+            }
+            return INJECTED_DOMAIN || '127.0.0.1';
+        }
+
+        const ACTIVE_DOMAIN = getClientDomain();
+
         // 1. Fetch Stats
         async function updateStats() {
             try {
@@ -303,6 +310,11 @@ export const DashboardHTML = (domain: string, port: number) => html`
                 output.innerText = "Generating...";
                 const res = await fetch('/api/config');
                 const data = await res.json();
+
+                // CLIENT-SIDE OVERRIDE
+                // Ensure the config matches the browser's view of the world
+                data.server = ACTIVE_DOMAIN;
+                data.host = ACTIVE_DOMAIN;
 
                 // Format as pretty JSON
                 output.innerText = JSON.stringify(data, null, 2);
@@ -326,9 +338,6 @@ export const DashboardHTML = (domain: string, port: number) => html`
                 const res = await fetch('/api/logs');
                 const data = await res.json();
                 const container = document.getElementById('log-container');
-
-                // Clear and rebuild (simple approach for this demo)
-                // In production, we would append new ones.
 
                 const currentScroll = container.scrollTop;
                 const isScrolledBottom = (container.scrollHeight - container.clientHeight) <= (container.scrollTop + 50);
@@ -369,8 +378,8 @@ export const DashboardHTML = (domain: string, port: number) => html`
                 users.forEach(user => {
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-slate-800/50 transition-colors";
-                    // Display IP:Port prominently
-                    const connectionInfo = SERVER_INFO.domain + ':' + SERVER_INFO.port;
+                    // Display IP:Port prominently using CLIENT DOMAIN
+                    const connectionInfo = ACTIVE_DOMAIN + ':' + SERVER_PORT;
 
                     tr.innerHTML = [
                         '<td class="px-4 py-3 font-medium text-white">' + user.username + '</td>',
@@ -406,6 +415,11 @@ export const DashboardHTML = (domain: string, port: number) => html`
             try {
                 const res = await fetch('/api/config?username=' + username);
                 const data = await res.json();
+
+                // CLIENT-SIDE OVERRIDE for user specific configs too
+                data.server = ACTIVE_DOMAIN;
+                data.host = ACTIVE_DOMAIN;
+
                 const text = JSON.stringify(data, null, 2);
                  navigator.clipboard.writeText(text).then(() => {
                     alert("Config for " + username + " copied to clipboard!");
@@ -440,6 +454,7 @@ export const DashboardHTML = (domain: string, port: number) => html`
         }
 
         // Init
+        document.getElementById('header-ip').innerText = 'IP: ' + ACTIVE_DOMAIN;
         fetchConfig();
         updateStats();
         updateUsers();

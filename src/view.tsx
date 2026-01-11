@@ -121,12 +121,21 @@ export const DashboardHTML = (domain: string, port: number) => html`
                 </div>
             </div>
 
-            <div class="mt-4 md:mt-0 flex items-center space-x-2 bg-slate-800/50 rounded-full px-4 py-1 border border-slate-700">
-                 <div class="relative w-3 h-3">
-                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
-                 </div>
-                 <span class="text-sm font-semibold text-green-400">System Online</span>
+            <div class="flex flex-col md:flex-row gap-4 mt-4 md:mt-0">
+                <div class="flex items-center space-x-2 bg-slate-800/50 rounded-full px-4 py-1 border border-slate-700">
+                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-indigo-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM4.332 8.027a6.012 6.012 0 011.912-2.706C6.512 5.73 6.974 6 7.5 6A1.5 1.5 0 019 7.5V8a2 2 0 004 0 2 2 0 011.523-1.943A5.977 5.977 0 0116 10c0 .34-.028.675-.083 1H15a2 2 0 00-2 2v2.197A5.973 5.973 0 0110 18z" clip-rule="evenodd" />
+                     </svg>
+                     <span class="text-sm font-mono text-indigo-300">IP: ${domain}</span>
+                </div>
+
+                <div class="flex items-center space-x-2 bg-slate-800/50 rounded-full px-4 py-1 border border-slate-700">
+                     <div class="relative w-3 h-3">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+                     </div>
+                     <span class="text-sm font-semibold text-green-400">System Online</span>
+                </div>
             </div>
         </header>
 
@@ -376,12 +385,12 @@ export const DashboardHTML = (domain: string, port: number) => html`
                         '    </div>',
                         '</td>',
                         '<td class="px-4 py-3 text-right flex gap-2 justify-end">',
-                         '    <button onclick="copyUserConfig(\'' + user.username + '\')" class="text-blue-400 hover:text-blue-300 transition-colors" title="Copy Config">',
+                         '    <button onclick="copyUserConfig(\\\'' + user.username + '\\\')" class="text-blue-400 hover:text-blue-300 transition-colors" title="Copy Config">',
                         '        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">',
                          '           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />',
                         '        </svg>',
                         '    </button>',
-                        '    <button onclick="deleteUser(\'' + user.id + '\')" class="text-red-400 hover:text-red-300 transition-colors" title="Delete">',
+                        '    <button onclick="deleteUser(\\\'' + user.id + '\\\')" class="text-red-400 hover:text-red-300 transition-colors" title="Delete">',
                         '        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">',
                         '            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />',
                         '        </svg>',
@@ -412,6 +421,7 @@ export const DashboardHTML = (domain: string, port: number) => html`
             try {
                 const res = await fetch('/api/users', {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username })
                 });
                 if(res.ok) {

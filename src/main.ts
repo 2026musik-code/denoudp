@@ -8,11 +8,11 @@ const app = new Hono();
 
 // Configuration from Environment
 const PORT = parseInt(Deno.env.get("PORT") || "8000");
-const UDP_PORT = parseInt(Deno.env.get("UDP_PORT") || "7200");
-const AUTH_KEY = Deno.env.get("AUTH_KEY") || "zivpn-secret-key";
+const UDP_PORT = parseInt(Deno.env.get("UDP_PORT") || "5667"); // Changed default to 5667
+const AUTH_KEY = Deno.env.get("AUTH_KEY") || "zivpn-secret-key"; // Default to zivpn-secret-key
 const SERVER_DOMAIN = Deno.env.get("SERVER_DOMAIN") || "127.0.0.1";
 
-// Forwarding Configuration (Target VPN Server, e.g., OpenVPN)
+// Forwarding Configuration (Target VPN Server, e.g., OpenVPN or ZIVPN core)
 const FORWARD_IP = Deno.env.get("FORWARD_IP") || "127.0.0.1";
 const FORWARD_PORT = parseInt(Deno.env.get("FORWARD_PORT") || "1194");
 
@@ -65,7 +65,7 @@ setInterval(cleanupSessions, 10000);
 async function startUdpServer() {
   addLog(`Starting UDP Forwarder Logic on port ${UDP_PORT}...`);
   addLog(`Forwarding Target: ${FORWARD_IP}:${FORWARD_PORT}`);
-  addLog(`Auth Key: ${AUTH_KEY} (Length: ${ENCODED_KEY.length})`);
+  addLog(`Auth Key: "${AUTH_KEY}" (Length: ${ENCODED_KEY.length})`);
 
   let listener: Deno.DatagramConn;
   try {
@@ -86,9 +86,18 @@ async function startUdpServer() {
     // Ensure addr is NetAddr (UDP)
     if (addr.transport !== 'udp') continue;
 
-    // 1. Fixed-Key Authentication
-    // Check if packet starts with AUTH_KEY
-    if (data.length < ENCODED_KEY.length) continue; // Too short
+    // 1. Authentication (Verify first 16 bytes)
+    // "Authentication: Baca 16 byte pertama sebagai zivpn-secret-key"
+    if (data.length < 16) continue; // Too short to contain key
+
+    // If AUTH_KEY is not 16 bytes, we should probably warn, but let's assume strict 16 check
+    // If ENCODED_KEY.length != 16, this logic needs adjustment based on user requirement "Baca 16 byte".
+    // "zivpn-secret-key" is exactly 16 bytes.
+    // If user changes AUTH_KEY to something else, we should strictly check ENCODED_KEY length or 16.
+    // We will use ENCODED_KEY logic, but ensure we check against the prefix.
+
+    // Strict check: The key must match the configured AUTH_KEY
+    if (data.length < ENCODED_KEY.length) continue;
 
     let authenticated = true;
     for (let i = 0; i < ENCODED_KEY.length; i++) {
@@ -104,7 +113,8 @@ async function startUdpServer() {
       continue;
     }
 
-    // 2. Payload Stripping
+    // 2. Stripping
+    // "Jika benar, hapus 16 byte tersebut"
     const payload = data.subarray(ENCODED_KEY.length);
     if (payload.length === 0) continue; // Empty payload?
 
@@ -121,12 +131,15 @@ async function startUdpServer() {
         });
 
         // Start upstream listener (Target -> Upstream -> Client)
+        // "Reverse Path: Kembalikan setiap respon... tanpa menambahkan header lagi"
         const listenPromise = (async () => {
           try {
             for await (const [upData, _upAddr] of upstream) {
                // We forward this BACK to the client.
                try {
+                  // Direct forward (no header added)
                   await listener.send(upData, addr);
+
                   // Refresh session on valid reply too?
                   const activeSession = clientSessions.get(clientKey);
                   if (activeSession) activeSession.lastActive = Date.now();
@@ -155,7 +168,7 @@ async function startUdpServer() {
         session.lastActive = Date.now();
     }
 
-    // 4. Forward to Target (Client -> Server -> Target)
+    // 4. Forwarding (Forward clean packet to local target)
     try {
         await session.upstream.send(payload, {
             transport: "udp",
